@@ -22,6 +22,7 @@ type Configuration struct {
 var config Configuration
 var logger *log.Logger
 
+//read in config file and prepare the log file
 func init() {
 	loadConfig()
 	file, err := os.OpenFile("chitchat.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
@@ -31,6 +32,7 @@ func init() {
 	logger = log.New(file, "INFO ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
+//load config file to Configuration struct
 func loadConfig() {
 	file, err := os.Open("config.json")
 	if err != nil {

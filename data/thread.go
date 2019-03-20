@@ -5,33 +5,33 @@ import (
 )
 
 type Thread struct {
-	Id        int
-	Uuid      string
-	Topic     string
-	UserId    int
-	CreatedAt string
+	Id          int
+	Uuid        string
+	Topic       string
+	UserId      int
+	CreatedTime string
 }
 
 type Post struct {
-	Id        int
-	Uuid      string
-	Body      string
-	UserId    int
-	ThreadId  int
-	CreatedAt string
+	Id          int
+	Uuid        string
+	Body        string
+	UserId      int
+	ThreadId    int
+	CreatedTime string
 }
 
-// format the CreatedAt date to display nicely on the screen
-func (thread *Thread) CreatedAtDate() string {
-	return thread.CreatedAt
+// format the CreatedTime date to display nicely on the screen
+func (thread *Thread) GetCreatedTime() string {
+	return thread.CreatedTime
 }
 
-func (post *Post) CreatedAtDate() string {
-	return post.CreatedAt
+func (post *Post) GetCreatedTime() string {
+	return post.CreatedTime
 }
 
 // get the number of posts in a thread
-func (thread *Thread) NumReplies() (count int) {
+func (thread *Thread) NumberOfPosts() (count int) {
 	rows, err := Db.Query("SELECT count(*) FROM posts where thread_id = $1", thread.Id)
 	if err != nil {
 		return
@@ -46,14 +46,14 @@ func (thread *Thread) NumReplies() (count int) {
 }
 
 // get posts to a thread
-func (thread *Thread) Posts() (posts []Post, err error) {
+func (thread *Thread) GetPosts() (posts []Post, err error) {
 	rows, err := Db.Query("SELECT id, uuid, body, user_id, thread_id, created_at FROM posts where thread_id = $1", thread.Id)
 	if err != nil {
 		return
 	}
 	for rows.Next() {
 		post := Post{}
-		if err = rows.Scan(&post.Id, &post.Uuid, &post.Body, &post.UserId, &post.ThreadId, &post.CreatedAt); err != nil {
+		if err = rows.Scan(&post.Id, &post.Uuid, &post.Body, &post.UserId, &post.ThreadId, &post.CreatedTime); err != nil {
 			return
 		}
 		posts = append(posts, post)
@@ -74,7 +74,7 @@ func (user *User) CreateThread(topic string) (conv Thread, err error) {
 	uuidT := createUUID()
 	timeT := time.Now().Format("2006-01-02 15:04:05")
 	_, err = stmt.Exec(uuidT, topic, user.Id, timeT)
-	err = Db.QueryRow("select id, uuid, topic,user_id, created_at from threads where uuid=?", uuidT).Scan(&conv.Id, &conv.Uuid, &conv.Topic, &conv.UserId, &conv.CreatedAt)
+	err = Db.QueryRow("select id, uuid, topic,user_id, created_at from threads where uuid=?", uuidT).Scan(&conv.Id, &conv.Uuid, &conv.Topic, &conv.UserId, &conv.CreatedTime)
 	return
 }
 
@@ -90,19 +90,19 @@ func (user *User) CreatePost(conv Thread, body string) (post Post, err error) {
 	uuidT := createUUID()
 	timeT := time.Now().Format("2006-01-02 15:04:05")
 	_, err = stmt.Exec(uuidT, body, user.Id, conv.Id, timeT)
-	err = Db.QueryRow("select id, uuid, body,user_id, thread_id, created_at from posts where uuid=?", uuidT).Scan(&post.Id, &post.Uuid, &post.Body, &post.UserId, &post.ThreadId, &post.CreatedAt)
+	err = Db.QueryRow("select id, uuid, body,user_id, thread_id, created_at from posts where uuid=?", uuidT).Scan(&post.Id, &post.Uuid, &post.Body, &post.UserId, &post.ThreadId, &post.CreatedTime)
 	return
 }
 
 // Get all threads in the database and returns it
-func Threads() (threads []Thread, err error) {
+func GetAllThreads() (threads []Thread, err error) {
 	rows, err := Db.Query("SELECT id, uuid, topic, user_id, created_at FROM threads ORDER BY created_at DESC")
 	if err != nil {
 		return
 	}
 	for rows.Next() {
 		conv := Thread{}
-		if err = rows.Scan(&conv.Id, &conv.Uuid, &conv.Topic, &conv.UserId, &conv.CreatedAt); err != nil {
+		if err = rows.Scan(&conv.Id, &conv.Uuid, &conv.Topic, &conv.UserId, &conv.CreatedTime); err != nil {
 			return
 		}
 		threads = append(threads, conv)
@@ -112,25 +112,25 @@ func Threads() (threads []Thread, err error) {
 }
 
 // Get a thread by the UUID
-func ThreadByUUID(uuid string) (conv Thread, err error) {
+func GetThreadByUUID(uuid string) (conv Thread, err error) {
 	conv = Thread{}
 	err = Db.QueryRow("SELECT id, uuid, topic, user_id, created_at FROM threads WHERE uuid = $1", uuid).
-		Scan(&conv.Id, &conv.Uuid, &conv.Topic, &conv.UserId, &conv.CreatedAt)
+		Scan(&conv.Id, &conv.Uuid, &conv.Topic, &conv.UserId, &conv.CreatedTime)
 	return
 }
 
 // Get the user who started this thread
-func (thread *Thread) User() (user User) {
+func (thread *Thread) GetAuthor() (user User) {
 	user = User{}
 	Db.QueryRow("SELECT id, uuid, name, email, created_at FROM users WHERE id = $1", thread.UserId).
-		Scan(&user.Id, &user.Uuid, &user.Name, &user.Email, &user.CreatedAt)
+		Scan(&user.Id, &user.Uuid, &user.Name, &user.Email, &user.CreatedTime)
 	return
 }
 
 // Get the user who wrote the post
-func (post *Post) User() (user User) {
+func (post *Post) GetAuthor() (user User) {
 	user = User{}
 	Db.QueryRow("SELECT id, uuid, name, email, created_at FROM users WHERE id = $1", post.UserId).
-		Scan(&user.Id, &user.Uuid, &user.Name, &user.Email, &user.CreatedAt)
+		Scan(&user.Id, &user.Uuid, &user.Name, &user.Email, &user.CreatedTime)
 	return
 }

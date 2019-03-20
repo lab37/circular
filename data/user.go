@@ -6,20 +6,20 @@ import (
 )
 
 type User struct {
-	Id        int
-	Uuid      string
-	Name      string
-	Email     string
-	Password  string
-	CreatedAt string
+	Id          int
+	Uuid        string
+	Name        string
+	Email       string
+	Password    string
+	CreatedTime string
 }
 
 type Session struct {
-	Id        int
-	Uuid      string
-	Email     string
-	UserId    int
-	CreatedAt string
+	Id          int
+	Uuid        string
+	Email       string
+	UserId      int
+	CreatedTime string
 }
 
 // Create a new session for an existing user
@@ -34,7 +34,7 @@ func (user *User) CreateSession() (session Session, err error) {
 	uuidT := createUUID()
 	timeT := time.Now().Format("2006-01-02 15:04:05")
 	_, err = stmt.Exec(uuidT, user.Email, user.Id, timeT)
-	err = Db.QueryRow("select id,uuid,email,user_id,created_at from sessions where uuid=?", uuidT).Scan(&session.Id, &session.Uuid, &session.Email, &session.UserId, &session.CreatedAt)
+	err = Db.QueryRow("select id,uuid,email,user_id,created_at from sessions where uuid=?", uuidT).Scan(&session.Id, &session.Uuid, &session.Email, &session.UserId, &session.CreatedTime)
 
 	return
 }
@@ -43,49 +43,7 @@ func (user *User) CreateSession() (session Session, err error) {
 func (user *User) GetSession() (session Session, err error) {
 	session = Session{}
 	err = Db.QueryRow("SELECT id, uuid, email, user_id, created_at FROM sessions WHERE user_id = $1", user.Id).
-		Scan(&session.Id, &session.Uuid, &session.Email, &session.UserId, &session.CreatedAt)
-	return
-}
-
-// Check if session is valid in the database
-func (session *Session) Check() (valid bool, err error) {
-	err = Db.QueryRow("SELECT id, uuid, email, user_id, created_at FROM sessions WHERE uuid = $1", session.Uuid).
-		Scan(&session.Id, &session.Uuid, &session.Email, &session.UserId, &session.CreatedAt)
-	if err != nil {
-		valid = false
-		return
-	}
-	if session.Id != 0 {
-		valid = true
-	}
-	return
-}
-
-// Delete session from database
-func (session *Session) DeleteByUUID() (err error) {
-	statement := "delete from sessions where uuid = $1"
-	stmt, err := Db.Prepare(statement)
-	if err != nil {
-		return
-	}
-	defer stmt.Close()
-
-	_, err = stmt.Exec(session.Uuid)
-	return
-}
-
-// Get the user from the session
-func (session *Session) GetUser() (user User, err error) {
-	user = User{}
-	err = Db.QueryRow("SELECT id, uuid, name, email, created_at FROM users WHERE id = $1", session.UserId).
-		Scan(&user.Id, &user.Uuid, &user.Name, &user.Email, &user.CreatedAt)
-	return
-}
-
-// Delete all sessions from database
-func SessionDeleteAll() (err error) {
-	statement := "delete from sessions"
-	_, err = Db.Exec(statement)
+		Scan(&session.Id, &session.Uuid, &session.Email, &session.UserId, &session.CreatedTime)
 	return
 }
 
@@ -107,7 +65,7 @@ func (user *User) Create() (err error) {
 	uuidT := createUUID()
 	timeT := time.Now().Format("2006-01-02 15:04:05")
 	_, err = stmt.Exec(uuidT, user.Name, user.Email, Encrypt(user.Password), timeT)
-	err = Db.QueryRow("select id,uuid,created_at from users where uuid=?", uuidT).Scan(&user.Id, &user.Uuid, &user.CreatedAt)
+	err = Db.QueryRow("select id,uuid,created_at from users where uuid=?", uuidT).Scan(&user.Id, &user.Uuid, &user.CreatedTime)
 	return
 }
 
@@ -150,21 +108,21 @@ func (user *User) UpdatePassword() (err error) {
 }
 
 // Delete all users from database
-func UserDeleteAll() (err error) {
+func DeleteAllUsers() (err error) {
 	statement := "delete from users"
 	_, err = Db.Exec(statement)
 	return
 }
 
 // Get all users in the database and returns it
-func GetUsers() (users []User, err error) {
+func GetAllUsers() (users []User, err error) {
 	rows, err := Db.Query("SELECT id, uuid, name, email, password, created_at FROM users")
 	if err != nil {
 		return
 	}
 	for rows.Next() {
 		user := User{}
-		if err = rows.Scan(&user.Id, &user.Uuid, &user.Name, &user.Email, &user.Password, &user.CreatedAt); err != nil {
+		if err = rows.Scan(&user.Id, &user.Uuid, &user.Name, &user.Email, &user.Password, &user.CreatedTime); err != nil {
 			return
 		}
 		users = append(users, user)
@@ -173,19 +131,61 @@ func GetUsers() (users []User, err error) {
 	return
 }
 
-// Get a single user given the email
+// Get a single user by the given email
 func GetUserByEmail(email string) (user User, err error) {
 	user = User{}
 	err = Db.QueryRow("SELECT id, uuid, name, email, password, created_at FROM users WHERE email = $1", email).
-		Scan(&user.Id, &user.Uuid, &user.Name, &user.Email, &user.Password, &user.CreatedAt)
+		Scan(&user.Id, &user.Uuid, &user.Name, &user.Email, &user.Password, &user.CreatedTime)
 	fmt.Println(user)
 	return
 }
 
-// Get a single user given the UUID
+// Get a single user by the given UUID
 func GetUserByUUID(uuid string) (user User, err error) {
 	user = User{}
 	err = Db.QueryRow("SELECT id, uuid, name, email, password, created_at FROM users WHERE uuid = $1", uuid).
-		Scan(&user.Id, &user.Uuid, &user.Name, &user.Email, &user.Password, &user.CreatedAt)
+		Scan(&user.Id, &user.Uuid, &user.Name, &user.Email, &user.Password, &user.CreatedTime)
+	return
+}
+
+// Check if session is valid in the database
+func (session *Session) IsValid() (valid bool, err error) {
+	err = Db.QueryRow("SELECT id, uuid, email, user_id, created_at FROM sessions WHERE uuid = $1", session.Uuid).
+		Scan(&session.Id, &session.Uuid, &session.Email, &session.UserId, &session.CreatedTime)
+	if err != nil {
+		valid = false
+		return
+	}
+	if session.Id != 0 {
+		valid = true
+	}
+	return
+}
+
+// Get the user from the session
+func (session *Session) GetUser() (user User, err error) {
+	user = User{}
+	err = Db.QueryRow("SELECT id, uuid, name, email, created_at FROM users WHERE id = $1", session.UserId).
+		Scan(&user.Id, &user.Uuid, &user.Name, &user.Email, &user.CreatedTime)
+	return
+}
+
+// Delete session from database
+func (session *Session) DeleteByUUID() (err error) {
+	statement := "delete from sessions where uuid = $1"
+	stmt, err := Db.Prepare(statement)
+	if err != nil {
+		return
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(session.Uuid)
+	return
+}
+
+// Delete all sessions from database
+func DeleteAllSessions() (err error) {
+	statement := "delete from sessions"
+	_, err = Db.Exec(statement)
 	return
 }
